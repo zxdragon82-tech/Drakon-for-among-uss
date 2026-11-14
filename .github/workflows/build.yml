@@ -1,17 +1,27 @@
 name: Build APK
-on: workflow_dispatch
+on: [push, workflow_dispatch]
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -o drakon-android-project-2.zip
+      - name: Unzip project
+        run: |
+          mkdir -p project
+          unzip -q DrakonClient.zip -d project
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
+      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: 8.7 }
-      - run: cd drakon && gradle assembleDebug
-      - uses: actions/upload-artifact@v4
         with:
-          name: DRAKON-APK
-          path: drakon/app/build/outputs/apk/debug/app-debug.apk
+          gradle-version: 8.9
+          build-root-directory: project
+      - run: gradle assembleDebug --no-daemon
+        working-directory: project
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Drakon Client build ${{ github.run_number }}
+          files: project/app/build/outputs/apk/debug/*.apk
